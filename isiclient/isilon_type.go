@@ -6,7 +6,7 @@ NOTICE: Adobe permits you to use, modify, and distribute this file in
 accordance with the terms of the Adobe license agreement accompanying
 it. If you have received this file from a source other than Adobe,
 then your use, modification, or distribution of it requires the prior
-written permission of Adobe. 
+written permission of Adobe.
 */
 package isiclient
 
@@ -253,20 +253,20 @@ type IsiSnapshotsSummary struct {
 type IsiSnapshots struct {
 	Resume    string `json:"resume"`
 	Snapshots []struct {
-		Created       int64   `json:"created"`
-		Expires       int64   `json:"expires"`
-		HasLocks      bool    `json:"has_locks"`
-		ID            float64 `json:"id"`
-		Name          string  `json:"name"`
-		Path          string  `json:"path"`
-		PctFilesystem float64 `json:"pct_filesystem"`
-		PctReserve    float64 `json:"pct_reserve"`
-		Schedule      string  `json:"schedule"`
-		ShadowBytes   float64 `json:"shadow_bytes"`
-		Size          float64 `json:"size"`
-		State         string  `json:"state"`
-		TargetID      string  `json:"target_id"`
-		TargetName    string  `json:"target_name"`
+		Created       int64       `json:"created"`
+		Expires       int64       `json:"expires"`
+		HasLocks      bool        `json:"has_locks"`
+		ID            float64     `json:"id"`
+		Name          string      `json:"name"`
+		Path          string      `json:"path"`
+		PctFilesystem float64     `json:"pct_filesystem"`
+		PctReserve    float64     `json:"pct_reserve"`
+		Schedule      string      `json:"schedule"`
+		ShadowBytes   float64     `json:"shadow_bytes"`
+		Size          float64     `json:"size"`
+		State         string      `json:"state"`
+		TargetID      interface{} `json:"target_id"`
+		TargetName    interface{} `json:"target_name"`
 	} `json:"snapshots"`
 	Total float64 `json:"total"`
 }

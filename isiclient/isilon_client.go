@@ -6,7 +6,7 @@ NOTICE: Adobe permits you to use, modify, and distribute this file in
 accordance with the terms of the Adobe license agreement accompanying
 it. If you have received this file from a source other than Adobe,
 then your use, modification, or distribution of it requires the prior
-written permission of Adobe. 
+written permission of Adobe.
 */
 package isiclient
 
@@ -143,7 +143,7 @@ func GetOneFsVersion(c *goisilon.Client) (string, error) {
 }
 
 //GetQuotas returns all quotas from the api
-func GetQuotas(c *goisilon.Client, exceeded string) (IsiQuotas, error) {
+func GetQuotas(c *goisilon.Client, exceeded bool) (IsiQuotas, error) {
 	var (
 		path   = "/platform/1/quota/quotas"
 		resp   IsiQuotas
@@ -153,8 +153,11 @@ func GetQuotas(c *goisilon.Client, exceeded string) (IsiQuotas, error) {
 	params = api.NewOrderedValues([][]string{
 		{"resolve_names", "true"},
 		{"resume", token},
-		{"exceeded", exceeded},
 	})
+
+	if exceeded {
+		params.StringSet("exceeded", "true")
+	}
 
 	fmt.Printf("%v", params)
 
@@ -165,7 +168,7 @@ func GetQuotas(c *goisilon.Client, exceeded string) (IsiQuotas, error) {
 	return resp, nil
 }
 
-func GetAllQuotas(c *goisilon.Client, exceeded string, numQuotas string) (IsiQuotas, error) {
+func GetAllQuotas(c *goisilon.Client, exceeded bool) (IsiQuotas, error) {
 	var (
 		path   = "/platform/1/quota/quotas"
 		resp   IsiQuotas
@@ -173,9 +176,10 @@ func GetAllQuotas(c *goisilon.Client, exceeded string, numQuotas string) (IsiQuo
 	)
 	params = api.NewOrderedValues([][]string{
 		{"resolve_names", "true"},
-		{"exceeded", exceeded},
-		{"limit", numQuotas},
 	})
+	if exceeded {
+		params.StringSet("exceeded", "true")
+	}
 
 	err := c.API.Get(context.Background(), path, "", params, nil, &resp)
 	if err != nil {
@@ -184,7 +188,7 @@ func GetAllQuotas(c *goisilon.Client, exceeded string, numQuotas string) (IsiQuo
 	return resp, nil
 }
 
-func GetQuotasOfType(c *goisilon.Client, exceeded string, numQuotas string, qtype string) (IsiQuotas, error) {
+func GetQuotasOfType(c *goisilon.Client, exceeded bool, qtype string) (IsiQuotas, error) {
 	var (
 		path   = "/platform/1/quota/quotas"
 		resp   IsiQuotas
@@ -192,10 +196,12 @@ func GetQuotasOfType(c *goisilon.Client, exceeded string, numQuotas string, qtyp
 	)
 	params = api.NewOrderedValues([][]string{
 		{"resolve_names", "true"},
-		{"exceeded", exceeded},
-		{"limit", numQuotas},
 		{"type", qtype},
 	})
+
+	if exceeded {
+		params.StringSet("exceeded", "true")
+	}
 
 	err := c.API.Get(context.Background(), path, "", params, nil, &resp)
 	if err != nil {
@@ -291,7 +297,7 @@ func GetSnapshots(c *goisilon.Client) (IsiSnapshots, error) {
 
 	err := c.API.Get(context.Background(), path, "", nil, nil, &resp)
 	if err != nil {
-		log.Warn("Unable to retrieve snapshots.")
+		log.Warnf("Unable to retrieve snapshots. Err: %s", err)
 		return resp, err
 	}
 	return resp, nil

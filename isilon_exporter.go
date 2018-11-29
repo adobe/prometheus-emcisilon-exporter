@@ -31,6 +31,7 @@ var (
 	uname  *string
 	pwdenv *string
 	site   *string
+	qOnly  *bool
 )
 
 // Registers the isilon_exporter as a prometheus collector
@@ -48,7 +49,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	log.Debugln("collect query:", filters)
 
 	//Creates a new isilon collector with filters applied. (Kingpin flags)
-	nc, err := collector.NewIsilonCollector(*fqdn, *port, *uname, *pwdenv, *site, true, filters...)
+	nc, err := collector.NewIsilonCollector(*fqdn, *port, *uname, *pwdenv, *site, true, *qOnly, filters...)
 	if err != nil {
 		log.Warnln("Could not create %s", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -88,11 +89,12 @@ func main() {
 		metricsPath   = kingpin.Flag("web.telemtry-path", "Path under which to expose metrics.").Default("/metrics").String()
 
 		//Isilon Specific Variables
-		cFQDN   = kingpin.Flag("isilon.cluster.fqdn", "FQDN for the isilon cluster to be scraped.").Default("localhost").String()
-		cPort   = kingpin.Flag("isilon.cluster.port", "Port to connect to the isilon cluster.").Default("8080").String()
-		cUname  = kingpin.Flag("isilon.cluster.username", "Username for access the isilon API.").Default("").String()
-		cPwdenv = kingpin.Flag("isilon.cluster.password.env", "Environment variable that contains the password for the Isilon cluster user.").Default("ISILON_CLUSTER_PASSWORD").String()
-		cSite   = kingpin.Flag("isilon.cluster.site", "Data Center site the cluster is located in.").Default("").String()
+		cFQDN     = kingpin.Flag("isilon.cluster.fqdn", "FQDN for the isilon cluster to be scraped.").Default("localhost").String()
+		cPort     = kingpin.Flag("isilon.cluster.port", "Port to connect to the isilon cluster.").Default("8080").String()
+		cUname    = kingpin.Flag("isilon.cluster.username", "Username for access the isilon API.").Default("").String()
+		cPwdenv   = kingpin.Flag("isilon.cluster.password.env", "Environment variable that contains the password for the Isilon cluster user.").Default("ISILON_CLUSTER_PASSWORD").String()
+		cSite     = kingpin.Flag("isilon.cluster.site", "Data Center site the cluster is located in.").Default("").String()
+		quotaOnly = kingpin.Flag("quota-only", "Set exporter to only collect quota information.").Default("false").Bool()
 	)
 
 	log.AddFlags(kingpin.CommandLine)
@@ -110,14 +112,14 @@ func main() {
 	uname = cUname
 	pwdenv = cPwdenv
 	site = cSite
-
+	qOnly = quotaOnly
 	log.Infoln("Started prometheus-emcisilon-exporter", version.Info())
 
 	log.Infof("Pointed to cluster %s", *fqdn)
 	log.Infoln("Build context", version.BuildContext())
 
 	// This instance is only used to check collector creation and logging.
-	nc, err := collector.NewIsilonCollector(*fqdn, *port, *uname, *pwdenv, *site, false)
+	nc, err := collector.NewIsilonCollector(*fqdn, *port, *uname, *pwdenv, *site, false, *qOnly)
 	if err != nil {
 		log.Fatalf("Could not create collector: %s", err)
 	}
