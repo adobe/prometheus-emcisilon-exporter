@@ -33,7 +33,17 @@ type IsilonCluster struct {
 	Username    string
 	Site        string
 	PasswordEnv string
+	QuotaOnly   bool
+	Quotas      Quotas
 	Client      *goisilon.Client
+}
+
+//Quotas struct contains information for to quota only collections
+type Quotas struct {
+	Count  int64
+	Errors int64
+	Err    error
+	Retry  int64
 }
 
 //SetClusterConfigName will get the name from the isi config and set it as IsilonClusterConfigName inside IsiCluster.
@@ -72,5 +82,17 @@ func CreateConstLabels() error {
 		ConstLabels = prometheus.Labels{"cluster": IsiCluster.Name}
 	}
 	log.Debugf("ConstLables are %v", ConstLabels)
+	return nil
+}
+
+//GetNumQuotas retrieve the number of quotas the system should have.
+func GetNumQuotas() error {
+	summary, err := isiclient.GetQuotaSummary(IsiCluster.Client)
+	if err != nil {
+		log.Warn("Unabled to update quota summary information.")
+		return err
+	}
+	IsiCluster.Quotas.Count = int64(summary.Count)
+
 	return nil
 }

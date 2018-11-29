@@ -157,14 +157,9 @@ func (c *snapshotsCollector) updateDayCounts(ch chan<- prometheus.Metric) error 
 	for _, snapshot := range resp.Snapshots {
 		elapsed := time.Since(time.Unix(snapshot.Created, 0))
 		days := RoundTime(elapsed.Seconds() / 86400)
-		log.Debugf("Snapshot is %v days old.", days)
 		for idx := range thresholds {
-			log.Debugf("There are %v snapshots over %v days old.", thresholds[idx].Counter, thresholds[idx].Days)
-			log.Debugf("Checking snapshots thresholds for %v days", thresholds[idx].Days)
 			if days >= thresholds[idx].Days {
-				log.Debugf("Incrementing counter for %v days.", thresholds[idx].Days)
 				thresholds[idx].Counter++
-				log.Debugf("There are %v snapshots over %v days old.", thresholds[idx].Counter, thresholds[idx].Days)
 			} else {
 				//We assume consistent order in the thresold array.
 				//Since the thresolds only get larger, if we fail one then move on to the next snapshot.
