@@ -51,11 +51,11 @@ func NewMemoryCollector() (Collector, error) {
 }
 
 func (c *memoryCollector) Update(ch chan<- prometheus.Metric) error {
-	keyMap := make(map[string]string)
+	keyMap := make(map[*prometheus.Desc]string)
 
-	keyMap["memoryUsed"] = "node.memory.used"
-	keyMap["memoryFree"] = "node.memory.free"
-	keyMap["memoryCache"] = "node.memory.cache"
+	keyMap[c.memoryUsed] = "node.memory.used"
+	keyMap[c.memoryFree] = "node.memory.free"
+	keyMap[c.memoryCache] = "node.memory.cache"
 
 	for promStat, statKey := range keyMap {
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
@@ -65,15 +65,7 @@ func (c *memoryCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 		for _, stat := range resp.Stats {
 			node := fmt.Sprintf("%v", stat.Devid)
-			val := stat.Value
-			switch promStat {
-			case "memoryUsed":
-				ch <- prometheus.MustNewConstMetric(c.memoryUsed, prometheus.GaugeValue, val, node)
-			case "memoryFree":
-				ch <- prometheus.MustNewConstMetric(c.memoryFree, prometheus.GaugeValue, val, node)
-			case "memoryCache":
-				ch <- prometheus.MustNewConstMetric(c.memoryCache, prometheus.GaugeValue, val, node)
-			}
+			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value, node)
 		}
 	}
 	return nil

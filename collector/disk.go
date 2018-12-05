@@ -20,10 +20,11 @@ import (
 )
 
 type diskCollector struct {
-	diskBusy            *prometheus.Desc
+	diskBusyAll         *prometheus.Desc
 	diskIoschedQueueAll *prometheus.Desc
 	diskXfersInRateAll  *prometheus.Desc
 	diskXfersOutRateAll *prometheus.Desc
+	diskLatencyAll      *prometheus.Desc
 }
 
 func init() {
@@ -33,7 +34,7 @@ func init() {
 //NewDiskCollector returns a new Collector exposing node disk statistics.
 func NewDiskCollector() (Collector, error) {
 	return &diskCollector{
-		diskBusy: prometheus.NewDesc(
+		diskBusyAll: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "disk_busy_all"),
 			"Current disk busy percentage represented in 0.0-1.0.",
 			[]string{"node", "disk"}, ConstLabels,
@@ -53,16 +54,22 @@ func NewDiskCollector() (Collector, error) {
 			"Current disk egress transfer rate.",
 			[]string{"node", "disk"}, ConstLabels,
 		),
+		diskLatencyAll: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "disk_latency_all"),
+			"Current disk latency.",
+			[]string{"node", "disk"}, ConstLabels,
+		),
 	}, nil
 }
 
 func (c *diskCollector) Update(ch chan<- prometheus.Metric) error {
-	keyMap := make(map[string]string)
+	keyMap := make(map[*prometheus.Desc]string)
 
-	keyMap["diskBusy"] = "node.disk.busy.all"
-	keyMap["diskIoschedQueueAll"] = "node.disk.iosched.queue.all"
-	keyMap["diskXfersInRateAll"] = "node.disk.xfers.in.rate.all"
-	keyMap["diskXfersOutRateAll"] = "node.disk.xfers.out.rate.all"
+	keyMap[c.diskBusyAll] = "node.disk.busy.all"
+	keyMap[c.diskIoschedQueueAll] = "node.disk.iosched.queue.all"
+	keyMap[c.diskXfersInRateAll] = "node.disk.xfers.in.rate.all"
+	keyMap[c.diskXfersOutRateAll] = "node.disk.xfers.out.rate.all"
+	keyMap[c.diskLatencyAll] = "node.disk.access.latency.all"
 
 	for promStat, statKey := range keyMap {
 		resp, err := isiclient.QueryStatsEngineMultiVal(IsiCluster.Client, statKey)
@@ -74,25 +81,13 @@ func (c *diskCollector) Update(ch chan<- prometheus.Metric) error {
 			node := fmt.Sprintf("%v", stat.Devid)
 			for _, valset := range stat.ValueSet {
 				for disk, val := range valset {
-					c.updateDiskStats(promStat, node, disk, val, ch)
+					if statKey == "node.disk.busy.all" {
+						val = val / 10
+					}
+					prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val, node, disk)
 				}
 			}
 		}
-	}
-	return nil
-}
-
-func (c *diskCollector) updateDiskStats(promStat string, node string, disk string, val float64, ch chan<- prometheus.Metric) error {
-	switch promStat {
-	case "diskBusy":
-		mVal := val / 10
-		ch <- prometheus.MustNewConstMetric(c.diskBusy, prometheus.GaugeValue, mVal, node, disk)
-	case "diskIoschedQueueAll":
-		ch <- prometheus.MustNewConstMetric(c.diskIoschedQueueAll, prometheus.GaugeValue, val, node, disk)
-	case "diskXfersInRateAll":
-		ch <- prometheus.MustNewConstMetric(c.diskXfersInRateAll, prometheus.GaugeValue, val, node, disk)
-	case "diskXfersOutRateAll":
-		ch <- prometheus.MustNewConstMetric(c.diskXfersOutRateAll, prometheus.GaugeValue, val, node, disk)
 	}
 	return nil
 }

@@ -77,15 +77,15 @@ func NewCapacityCollector() (Collector, error) {
 }
 
 func (c *capacityCollector) Update(ch chan<- prometheus.Metric) error {
-	keyMap := make(map[string]string)
+	keyMap := make(map[*prometheus.Desc]string)
 
-	keyMap["bytesTotal"] = "ifs.bytes.total"
-	keyMap["bytesUsed"] = "ifs.bytes.used"
-	keyMap["bytesAvail"] = "ifs.bytes.avail"
-	keyMap["bytesFree"] = "ifs.bytes.free"
-	keyMap["percentUsed"] = "ifs.percent.used"
-	keyMap["percentAvail"] = "ifs.percent.avail"
-	keyMap["percentFree"] = "ifs.percent.free"
+	keyMap[c.bytesTotal] = "ifs.bytes.total"
+	keyMap[c.bytesUsed] = "ifs.bytes.used"
+	keyMap[c.bytesAvail] = "ifs.bytes.avail"
+	keyMap[c.bytesFree] = "ifs.bytes.free"
+	keyMap[c.percentUsed] = "ifs.percent.used"
+	keyMap[c.percentAvail] = "ifs.percent.avail"
+	keyMap[c.percentFree] = "ifs.percent.free"
 
 	for promStat, statKey := range keyMap {
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
@@ -94,31 +94,11 @@ func (c *capacityCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 		for _, stat := range resp.Stats {
 			val := stat.Value
-			err = c.updateCapacity(promStat, val, ch)
+			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val)
 			if err != nil {
 				log.Infof("Unable to update capacity metric for %s", statKey)
 			}
 		}
-	}
-	return nil
-}
-
-func (c *capacityCollector) updateCapacity(promStat string, val float64, ch chan<- prometheus.Metric) error {
-	switch promStat {
-	case "bytesTotal":
-		ch <- prometheus.MustNewConstMetric(c.bytesTotal, prometheus.GaugeValue, val)
-	case "bytesUsed":
-		ch <- prometheus.MustNewConstMetric(c.bytesUsed, prometheus.GaugeValue, val)
-	case "bytesAvail":
-		ch <- prometheus.MustNewConstMetric(c.bytesAvail, prometheus.GaugeValue, val)
-	case "bytesFree":
-		ch <- prometheus.MustNewConstMetric(c.bytesFree, prometheus.GaugeValue, val)
-	case "percentUsed":
-		ch <- prometheus.MustNewConstMetric(c.percentUsed, prometheus.GaugeValue, val)
-	case "percentAvail":
-		ch <- prometheus.MustNewConstMetric(c.percentAvail, prometheus.GaugeValue, val)
-	case "percentFree":
-		ch <- prometheus.MustNewConstMetric(c.percentFree, prometheus.GaugeValue, val)
 	}
 	return nil
 }

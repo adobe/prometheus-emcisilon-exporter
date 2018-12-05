@@ -19,6 +19,9 @@ import (
 )
 
 type nodeHealthCollector struct {
+	nodeNvramBatteryStatus *prometheus.Desc
+	nodeProcessCount       *prometheus.Desc
+	nodeFilesOpen          *prometheus.Desc
 	nodeDiskUnhealthyCount *prometheus.Desc
 	nodeHealth             *prometheus.Desc
 	nodeDiskCount          *prometheus.Desc
@@ -33,6 +36,21 @@ func init() {
 //NewNodeHealthCollector returns a new Collector exposing node health information.
 func NewNodeHealthCollector() (Collector, error) {
 	return &nodeHealthCollector{
+		nodeNvramBatteryStatus: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "nvram_battery_status"),
+			"Combined charge status for all batteries. 0 = Not available, 1 = Good, 2 = Caution, 3 = Error.",
+			[]string{"node"}, ConstLabels,
+		),
+		nodeProcessCount: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "process_count"),
+			"Number of processess on the node.",
+			[]string{"node"}, ConstLabels,
+		),
+		nodeFilesOpen: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "open_files"),
+			"Number of open files on the node.",
+			[]string{"node"}, ConstLabels,
+		),
 		nodeDiskUnhealthyCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "disk_unhealthy_count"),
 			"Number of unhealthy disk per node as an int.",
@@ -62,13 +80,16 @@ func NewNodeHealthCollector() (Collector, error) {
 }
 
 func (c *nodeHealthCollector) Update(ch chan<- prometheus.Metric) error {
-	keyMap := make(map[string]string)
+	keyMap := make(map[*prometheus.Desc]string)
 
-	keyMap["nodeDiskUnhealthyCount"] = "node.disk.unhealthy.count"
-	keyMap["nodeHealth"] = "node.health"
-	keyMap["nodeDiskCount"] = "node.disk.count"
-	keyMap["nodeBootTime"] = "node.boottime"
-	keyMap["nodeUptime"] = "node.uptime"
+	keyMap[c.nodeNvramBatteryStatus] = "node.nvram.charge.status"
+	keyMap[c.nodeDiskUnhealthyCount] = "node.disk.unhealthy.count"
+	keyMap[c.nodeHealth] = "node.health"
+	keyMap[c.nodeDiskCount] = "node.disk.count"
+	keyMap[c.nodeBootTime] = "node.boottime"
+	keyMap[c.nodeUptime] = "node.uptime"
+	keyMap[c.nodeFilesOpen] = "node.open.files"
+	keyMap[c.nodeProcessCount] = "node.process.count"
 
 	for promStat, statKey := range keyMap {
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
@@ -78,19 +99,7 @@ func (c *nodeHealthCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 		for _, stat := range resp.Stats {
 			node := fmt.Sprintf("%v", stat.Devid)
-			val := stat.Value
-			switch promStat {
-			case "nodeDiskUnhealthyCount":
-				ch <- prometheus.MustNewConstMetric(c.nodeDiskUnhealthyCount, prometheus.GaugeValue, val, node)
-			case "nodeHealth":
-				ch <- prometheus.MustNewConstMetric(c.nodeHealth, prometheus.GaugeValue, val, node)
-			case "nodeDiskCount":
-				ch <- prometheus.MustNewConstMetric(c.nodeDiskCount, prometheus.GaugeValue, val, node)
-			case "nodeBootTime":
-				ch <- prometheus.MustNewConstMetric(c.nodeBootTime, prometheus.GaugeValue, val, node)
-			case "nodeUptime":
-				ch <- prometheus.MustNewConstMetric(c.nodeUptime, prometheus.GaugeValue, val, node)
-			}
+			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value, node)
 		}
 	}
 	return nil
