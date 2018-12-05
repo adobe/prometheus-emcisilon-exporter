@@ -500,3 +500,38 @@ type IsiStoragePools struct {
 	} `json:"storagepools"`
 	Total float64 `json:"total"`
 }
+
+type IsiNodesDrives struct {
+	Errors []interface{} `json:"errors"`
+	Nodes  []struct {
+		Drives []struct {
+			Baynum   float64 `json:"baynum"`
+			Blocks   float64 `json:"blocks"`
+			Chassis  float64 `json:"chassis"`
+			Devname  string  `json:"devname"`
+			Firmware struct {
+				CurrentFirmware string `json:"current_firmware"`
+				DesiredFirmware string `json:"desired_firmware"`
+			} `json:"firmware"`
+			Handle              float64 `json:"handle"`
+			InterfaceType       string  `json:"interface_type"`
+			Lnum                float64 `json:"lnum"`
+			Locnstr             string  `json:"locnstr"`
+			LogicalBlockLength  float64 `json:"logical_block_length"`
+			MediaType           string  `json:"media_type"`
+			Model               string  `json:"model"`
+			PhysicalBlockLength float64 `json:"physical_block_length"`
+			Present             bool    `json:"present"`
+			Purpose             string  `json:"purpose"`
+			PurposeDescription  string  `json:"purpose_description"`
+			Serial              string  `json:"serial"`
+			UIState             string  `json:"ui_state"`
+			Wwn                 string  `json:"wwn"`
+			XLoc                float64 `json:"x_loc"`
+			YLoc                float64 `json:"y_loc"`
+		} `json:"drives"`
+		ID  float64 `json:"id"`
+		Lnn float64 `json:"lnn"`
+	} `json:"nodes"`
+	Total int `json:"total"`
+}

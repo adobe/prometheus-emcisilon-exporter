@@ -398,3 +398,14 @@ func GetStoragePools(c *goisilon.Client) (IsiStoragePools, error) {
 	}
 	return resp, nil
 }
+
+func GetDriveInfo(c *goisilon.Client) (IsiNodesDrives, error) {
+	const path = "/platform/3/cluster/nodes/all/drives"
+	var resp IsiNodesDrives
+	err := c.API.Get(context.Background(), path, "", nil, nil, &resp)
+	if err != nil {
+		log.Warn("Unable to get drive info.")
+		return resp, err
+	}
+	return resp, nil
+}

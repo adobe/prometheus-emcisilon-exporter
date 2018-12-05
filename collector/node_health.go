@@ -36,14 +36,14 @@ func init() {
 //NewNodeHealthCollector returns a new Collector exposing node health information.
 func NewNodeHealthCollector() (Collector, error) {
 	return &nodeHealthCollector{
-		nodeNvramBatteryStatus: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "nvram_battery_status"),
-			"Combined charge status for all batteries. 0 = Not available, 1 = Good, 2 = Caution, 3 = Error.",
-			[]string{"node"}, ConstLabels,
-		),
 		nodeProcessCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "process_count"),
 			"Number of processess on the node.",
+			[]string{"node"}, ConstLabels,
+		),
+		nodeNvramBatteryStatus: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "nvram_battery_status"),
+			"Combined charge status for all batteries. 0 = Not available, 1 = Good, 2 = Caution, 3 = Error.",
 			[]string{"node"}, ConstLabels,
 		),
 		nodeFilesOpen: prometheus.NewDesc(

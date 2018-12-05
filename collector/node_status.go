@@ -22,6 +22,7 @@ import (
 type nodeStatusCollector struct {
 	nodeBattery     *prometheus.Desc
 	nodePowerSupply *prometheus.Desc
+	nodeDriveState  *prometheus.Desc
 }
 
 func init() {
@@ -41,6 +42,11 @@ func NewNodeStatusCollector() (Collector, error) {
 			"Status for power supplies.",
 			[]string{"node", "power_supply"}, ConstLabels,
 		),
+		nodeDriveState: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "drive_state"),
+			"Current state of the drive in a bay. 0 = Healthy, 1 = Unhealthy.",
+			[]string{"node", "bay_num"}, ConstLabels,
+		),
 	}, nil
 }
 
@@ -56,6 +62,10 @@ func (c *nodeStatusCollector) Update(ch chan<- prometheus.Metric) error {
 	err = c.updatePowerSupplyStatus(ch, resp)
 	if err != nil {
 		log.Warnf("Unable to update power supply status. %s", err)
+	}
+	err = c.updateDriveStatus(ch)
+	if err != nil {
+		log.Warnf("Unable to update drive states. %s", err)
 	}
 	return err
 }
@@ -94,6 +104,28 @@ func (c *nodeStatusCollector) updatePowerSupplyStatus(ch chan<- prometheus.Metri
 				status = 1
 			}
 			ch <- prometheus.MustNewConstMetric(c.nodePowerSupply, prometheus.GaugeValue, status, nodeID, supplyID)
+		}
+	}
+	return nil
+}
+
+func (c *nodeStatusCollector) updateDriveStatus(ch chan<- prometheus.Metric) error {
+	resp, err := isiclient.GetDriveInfo(IsiCluster.Client)
+	if err != nil {
+		log.Warnf("Unabled to collect drive status. %s", err)
+		return err
+	}
+	for _, node := range resp.Nodes {
+		nodeID := fmt.Sprintf("%v", node.ID)
+		for _, drive := range node.Drives {
+			var state float64
+			bayID := fmt.Sprintf("%v", drive.Baynum)
+			if drive.UIState == "HEALTHY" {
+				state = 0
+			} else {
+				state = 1
+			}
+			ch <- prometheus.MustNewConstMetric(c.nodeDriveState, prometheus.GaugeValue, state, nodeID, bayID)
 		}
 	}
 	return nil
