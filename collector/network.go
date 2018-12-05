@@ -20,8 +20,10 @@ import (
 )
 
 type networkCollector struct {
-	netBytesInRate  *prometheus.Desc
-	netBytesOutRate *prometheus.Desc
+	netBytesInRate   *prometheus.Desc
+	netBytesOutRate  *prometheus.Desc
+	netErrorsInRate  *prometheus.Desc
+	netErrorsOutRate *prometheus.Desc
 }
 
 func init() {
@@ -41,14 +43,26 @@ func NewNetworkCollector() (Collector, error) {
 			"Current network bytes out rate from external interfaces.",
 			[]string{"node"}, ConstLabels,
 		),
+		netErrorsInRate: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "net_ext_errors_in_rate"),
+			"Input errors per second for a node's external interfaces.",
+			[]string{"node"}, ConstLabels,
+		),
+		netErrorsOutRate: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "net_ext_errors_out_rate"),
+			"Output errors per seccond for a node's external interfaces.",
+			[]string{"node"}, ConstLabels,
+		),
 	}, nil
 }
 
 func (c *networkCollector) Update(ch chan<- prometheus.Metric) error {
-	keyMap := make(map[string]string)
+	keyMap := make(map[*prometheus.Desc]string)
 
-	keyMap["netBytesInRate"] = "node.net.ext.bytes.in.rate"
-	keyMap["netBytesOutRate"] = "node.net.ext.bytes.out.rate"
+	keyMap[c.netBytesInRate] = "node.net.ext.bytes.in.rate"
+	keyMap[c.netBytesOutRate] = "node.net.ext.bytes.out.rate"
+	keyMap[c.netErrorsInRate] = "node.net.ext.errors.in.rate"
+	keyMap[c.netErrorsOutRate] = "node.net.ext.errors.out.rate"
 
 	for promStat, statKey := range keyMap {
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
@@ -58,13 +72,7 @@ func (c *networkCollector) Update(ch chan<- prometheus.Metric) error {
 		}
 		for _, stat := range resp.Stats {
 			node := fmt.Sprintf("%v", stat.Devid)
-			val := stat.Value
-			switch promStat {
-			case "netBytesInRate":
-				ch <- prometheus.MustNewConstMetric(c.netBytesInRate, prometheus.GaugeValue, val, node)
-			case "netBytesOutRate":
-				ch <- prometheus.MustNewConstMetric(c.netBytesOutRate, prometheus.GaugeValue, val, node)
-			}
+			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value, node)
 		}
 	}
 	return nil

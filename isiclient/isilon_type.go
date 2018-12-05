@@ -6,7 +6,7 @@ NOTICE: Adobe permits you to use, modify, and distribute this file in
 accordance with the terms of the Adobe license agreement accompanying
 it. If you have received this file from a source other than Adobe,
 then your use, modification, or distribution of it requires the prior
-written permission of Adobe. 
+written permission of Adobe.
 */
 package isiclient
 
@@ -253,20 +253,20 @@ type IsiSnapshotsSummary struct {
 type IsiSnapshots struct {
 	Resume    string `json:"resume"`
 	Snapshots []struct {
-		Created       int64   `json:"created"`
-		Expires       int64   `json:"expires"`
-		HasLocks      bool    `json:"has_locks"`
-		ID            float64 `json:"id"`
-		Name          string  `json:"name"`
-		Path          string  `json:"path"`
-		PctFilesystem float64 `json:"pct_filesystem"`
-		PctReserve    float64 `json:"pct_reserve"`
-		Schedule      string  `json:"schedule"`
-		ShadowBytes   float64 `json:"shadow_bytes"`
-		Size          float64 `json:"size"`
-		State         string  `json:"state"`
-		TargetID      string  `json:"target_id"`
-		TargetName    string  `json:"target_name"`
+		Created       int64       `json:"created"`
+		Expires       int64       `json:"expires"`
+		HasLocks      bool        `json:"has_locks"`
+		ID            float64     `json:"id"`
+		Name          string      `json:"name"`
+		Path          string      `json:"path"`
+		PctFilesystem float64     `json:"pct_filesystem"`
+		PctReserve    float64     `json:"pct_reserve"`
+		Schedule      string      `json:"schedule"`
+		ShadowBytes   float64     `json:"shadow_bytes"`
+		Size          float64     `json:"size"`
+		State         string      `json:"state"`
+		TargetID      interface{} `json:"target_id"`
+		TargetName    interface{} `json:"target_name"`
 	} `json:"snapshots"`
 	Total float64 `json:"total"`
 }
@@ -499,4 +499,39 @@ type IsiStoragePools struct {
 		ProtectionPolicy string `json:"protection_policy,omitempty"`
 	} `json:"storagepools"`
 	Total float64 `json:"total"`
+}
+
+type IsiNodesDrives struct {
+	Errors []interface{} `json:"errors"`
+	Nodes  []struct {
+		Drives []struct {
+			Baynum   float64 `json:"baynum"`
+			Blocks   float64 `json:"blocks"`
+			Chassis  float64 `json:"chassis"`
+			Devname  string  `json:"devname"`
+			Firmware struct {
+				CurrentFirmware string `json:"current_firmware"`
+				DesiredFirmware string `json:"desired_firmware"`
+			} `json:"firmware"`
+			Handle              float64 `json:"handle"`
+			InterfaceType       string  `json:"interface_type"`
+			Lnum                float64 `json:"lnum"`
+			Locnstr             string  `json:"locnstr"`
+			LogicalBlockLength  float64 `json:"logical_block_length"`
+			MediaType           string  `json:"media_type"`
+			Model               string  `json:"model"`
+			PhysicalBlockLength float64 `json:"physical_block_length"`
+			Present             bool    `json:"present"`
+			Purpose             string  `json:"purpose"`
+			PurposeDescription  string  `json:"purpose_description"`
+			Serial              string  `json:"serial"`
+			UIState             string  `json:"ui_state"`
+			Wwn                 string  `json:"wwn"`
+			XLoc                float64 `json:"x_loc"`
+			YLoc                float64 `json:"y_loc"`
+		} `json:"drives"`
+		ID  float64 `json:"id"`
+		Lnn float64 `json:"lnn"`
+	} `json:"nodes"`
+	Total int `json:"total"`
 }

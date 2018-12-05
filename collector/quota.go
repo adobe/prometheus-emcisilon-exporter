@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
-	"github.com/thecodeteam/goisilon"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -38,14 +37,14 @@ type quotaCollector struct {
 	quotaThresholdSoft             *prometheus.Desc
 	quotaThresholdSoftGrace        *prometheus.Desc
 	quotaThresholdSoftExceeded     *prometheus.Desc
+	quotaCollectedNumber           *prometheus.Desc
 }
 
 var (
-	typeFlag      *string
-	exceededFlag  *string
-	numQuotas     string
-	rtoken        = "unset"
-	collectNumber int
+	typeFlag     *string
+	exceededFlag *bool
+	rtoken       string
+	attempt      = int64(0)
 )
 
 func init() {
@@ -59,8 +58,7 @@ func init() {
 	//Quota exceeded flag.
 	exceededFlagName := "collector.quota.exceeded"
 	exceededFlagHelp := "Only turn quotas that have exceeded one of more thresholds (default: false). Boolean of type (false, true)."
-	exceededFlag = kingpin.Flag(exceededFlagName, exceededFlagHelp).Default("false").String()
-
+	exceededFlag = kingpin.Flag(exceededFlagName, exceededFlagHelp).Default("false").Bool()
 }
 
 //NewQuotaCollector returns a new Collector exposing node health information.
@@ -136,6 +134,11 @@ func NewQuotaCollector() (Collector, error) {
 			"True if the hard threshold has been hit.",
 			[]string{"id", "path", "name", "type"}, ConstLabels,
 		),
+		quotaCollectedNumber: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "collected_total"),
+			"Number of quotas collected by the quota collector.",
+			[]string{"attempt"}, ConstLabels,
+		),
 	}, nil
 }
 
@@ -144,18 +147,21 @@ func (c *quotaCollector) Update(ch chan<- prometheus.Metric) error {
 	log.Debugf("Collected only exceeded quotas: %v", *exceededFlag)
 
 	// Keep going until there is no resume token
+	var collectedCount int64
+	var collectNumber int
 	var err error
+	rtoken = "unset"
+	var quotas isiclient.IsiQuotas
 	for rtoken != "" {
 		// Collect a time and counter for each iteration of quotas
 		collectNumber++
 		begin := time.Now()
+		attempt++
 
 		//Ask for first set of quotas
-		quotas, qerr := c.getQuotas(IsiCluster.Client)
-		if qerr != nil {
+		quotas, err = c.getQuotas()
+		if err != nil {
 			log.Warnf("Unable to collect quotas for type: %s", *typeFlag)
-			err = qerr
-			return err
 		}
 
 		//Calculate the time it took to gather this iteration of quotas
@@ -163,6 +169,9 @@ func (c *quotaCollector) Update(ch chan<- prometheus.Metric) error {
 
 		//Grab the resume token if there is one. If there is not one it will be a empty string.
 		rtoken = quotas.Resume
+
+		//Add the number of collected quotas to the total.
+		collectedCount += int64(len(quotas.Quotas))
 
 		//Create a new metric of the amount of time it took to collect this iteration of quotas.
 		ch <- prometheus.MustNewConstMetric(c.quotaIterationCollectionTime, prometheus.GaugeValue, duration.Seconds(), fmt.Sprintf("%v", collectNumber))
@@ -172,85 +181,97 @@ func (c *quotaCollector) Update(ch chan<- prometheus.Metric) error {
 		for _, quota := range quotas.Quotas {
 			// Get username for the quota
 			var name string
+			var nerr error
 			if quota.Type != "directory" {
-				name, err = c.getQuotaUserName(quota)
-				if err != nil {
-					log.Infof("Unabled to get a name for quota: %s", err)
+				name, nerr = c.getQuotaUserName(quota)
+				if nerr != nil {
+					log.Infof("Unabled to get a name for quota: %s", nerr)
 				}
 			} else {
 				name = quota.Path
 			}
 
 			//Gather meta-data metrics
-			err = c.updateMetaData(ch, quota, name)
-			if err != nil {
-				log.Warnf("Unable to update meta data for quota: %s", name)
+			nerr = c.updateMetaData(ch, quota, name)
+			if nerr != nil {
+				log.Warnf("Unable to update meta data forquota: %s", name)
 			}
 
 			//Gather usage metrics
-			err = c.updateUsage(ch, quota, name)
-			if err != nil {
+			nerr = c.updateUsage(ch, quota, name)
+			if nerr != nil {
 				log.Warnf("Unable to update usage for quota: %s", name)
 			}
 
 			//Gather threshold metrics
-			err = c.updateThresholds(ch, quota, name)
-			if err != nil {
+			nerr = c.updateThresholds(ch, quota, name)
+			if nerr != nil {
 				log.Warnf("Unable to update usage for quota: %s", name)
 			}
 		}
 	}
-	if err != nil {
-		return err
+
+	ch <- prometheus.MustNewConstMetric(c.quotaCollectedNumber, prometheus.GaugeValue, float64(collectedCount), string(attempt))
+
+	if IsiCluster.QuotaOnly {
+		if (collectedCount != IsiCluster.Quotas.Count) && (!*exceededFlag) && (*typeFlag == "all") {
+			log.Warnf("Collected %v quotas of a total of %v", collectedCount, IsiCluster.Quotas.Count)
+			if attempt <= IsiCluster.Quotas.Retry {
+				log.Infof("Recursive quota collection attempt number %v", attempt+1)
+				err = c.Update(ch)
+			} else {
+				mesg := fmt.Sprintf("eexceded retry attempts to collect quota information: attempt %v/%v", attempt, IsiCluster.Quotas.Count)
+				err = errors.New(mesg)
+				return err
+			}
+		} else if (collectedCount == 0) && (IsiCluster.Quotas.Count > 0) {
+			log.Warnf("Collected %v quotas of a total of %v", collectedCount, IsiCluster.Quotas.Count)
+			if attempt <= IsiCluster.Quotas.Retry {
+				log.Infof("Recursive quota collection attempt number %v", attempt+1)
+				err = c.Update(ch)
+			} else {
+				mesg := fmt.Sprintf("eexceded retry attempts to collect quota information: attempt %v/%v", attempt, IsiCluster.Quotas.Count)
+				err = errors.New(mesg)
+				return err
+			}
+		} else {
+			log.Infof("Collected %v quotas of a total of %v", collectedCount, IsiCluster.Quotas.Count)
+		}
+	} else {
+		log.Debugf("Collected %v quotas.", collectedCount)
 	}
-	return nil
+
+	return err
 }
 
-func (c *quotaCollector) getQuotas(con *goisilon.Client) (isiclient.IsiQuotas, error) {
-	//Get count of quotas
-	var quotas isiclient.IsiQuotas
-	sum, err := isiclient.GetQuotaSummary(con)
-	if err != nil {
-		log.Warn("Unable to collect quota summary information.")
-		return quotas, err
-	}
-
+func (c *quotaCollector) getQuotas() (isiclient.IsiQuotas, error) {
 	//Check to see what type of quota is being collected.
+	var collectErr error
+	var quotas isiclient.IsiQuotas
 	if rtoken != "" && rtoken != "unset" {
-		quotas, err = isiclient.GetQuotasWithResume(con, rtoken)
+		quotas, collectErr = isiclient.GetQuotasWithResume(IsiCluster.Client, rtoken)
 	} else {
 		switch *typeFlag {
 		case "directory":
-			numQuotas = fmt.Sprintf("%v", sum.DirectoryQuotasCount)
-			quotas, err = isiclient.GetQuotasOfType(con, *exceededFlag, numQuotas, *typeFlag)
+			quotas, collectErr = isiclient.GetQuotasOfType(IsiCluster.Client, *exceededFlag, *typeFlag)
 		case "user":
-			numQuotas = fmt.Sprintf("%v", sum.UserQuotasCount)
-			quotas, err = isiclient.GetQuotasOfType(con, *exceededFlag, numQuotas, *typeFlag)
+			quotas, collectErr = isiclient.GetQuotasOfType(IsiCluster.Client, *exceededFlag, *typeFlag)
 		case "group":
-			numQuotas = fmt.Sprintf("%v", sum.GroupQuotasCount)
-			quotas, err = isiclient.GetQuotasOfType(con, *exceededFlag, numQuotas, *typeFlag)
+			quotas, collectErr = isiclient.GetQuotasOfType(IsiCluster.Client, *exceededFlag, *typeFlag)
 		case "default-user":
-			numQuotas = fmt.Sprintf("%v", sum.DefaultUserQuotasCount)
-			quotas, err = isiclient.GetQuotasOfType(con, *exceededFlag, numQuotas, *typeFlag)
+			quotas, collectErr = isiclient.GetQuotasOfType(IsiCluster.Client, *exceededFlag, *typeFlag)
 		case "default-group":
-			numQuotas = fmt.Sprintf("%v", sum.DefaultGroupQuotasCount)
-			quotas, err = isiclient.GetQuotasOfType(con, *exceededFlag, numQuotas, *typeFlag)
+			quotas, collectErr = isiclient.GetQuotasOfType(IsiCluster.Client, *exceededFlag, *typeFlag)
 		case "all":
-			numQuotas = fmt.Sprintf("%v", sum.Count)
-			quotas, err = isiclient.GetAllQuotas(con, *exceededFlag, numQuotas)
+			quotas, collectErr = isiclient.GetAllQuotas(IsiCluster.Client, *exceededFlag)
 		default:
 			mesg := fmt.Sprintf("Unknown quota type: %s", *typeFlag)
-			err = errors.New(mesg)
-			return quotas, err
+			collectErr = errors.New(mesg)
+			return quotas, collectErr
 		}
 	}
 
-	if err != nil {
-		mesg := fmt.Sprintf("Unable to collect quota information: %s", err)
-		err := errors.New(mesg)
-		return quotas, err
-	}
-	return quotas, nil
+	return quotas, collectErr
 }
 
 func (c *quotaCollector) getQuotaUserName(q isiclient.IsiQuota) (string, error) {

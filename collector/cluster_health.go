@@ -43,9 +43,9 @@ func NewClusterHealthCollector() (Collector, error) {
 }
 
 func (c *clusterHealthCollector) Update(ch chan<- prometheus.Metric) error {
-	keyMap := make(map[string]string)
+	keyMap := make(map[*prometheus.Desc]string)
 
-	keyMap["clusterHealth"] = "cluster.health"
+	keyMap[c.clusterHealth] = "cluster.health"
 
 	for promStat, statKey := range keyMap {
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
@@ -53,11 +53,7 @@ func (c *clusterHealthCollector) Update(ch chan<- prometheus.Metric) error {
 			log.Warnf("Error attempting to query stats engine with key %s: %s", statKey, err)
 		}
 		for _, stat := range resp.Stats {
-			val := stat.Value
-			switch promStat {
-			case "clusterHealth":
-				ch <- prometheus.MustNewConstMetric(c.clusterHealth, prometheus.GaugeValue, val)
-			}
+			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value)
 		}
 	}
 
