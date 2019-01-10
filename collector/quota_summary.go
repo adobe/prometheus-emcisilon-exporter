@@ -31,7 +31,7 @@ func init() {
 	registerCollector("quota_summary", defaultEnabled, NewQuotaSummaryCollector)
 }
 
-//NewQuotaCollector returns a new Collector exposing node health information.
+//NewQuotaSummaryCollector returns a new Collector exposing quota summary information.
 func NewQuotaSummaryCollector() (Collector, error) {
 	return &quotaSummaryCollector{
 		quotaSummaryTotalCount: prometheus.NewDesc(

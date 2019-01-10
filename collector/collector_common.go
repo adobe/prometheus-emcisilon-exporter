@@ -23,6 +23,33 @@ var (
 	IsiCluster IsilonCluster
 	//ConstLabels are constant labels that every metric will have.  This includes the label cluster.
 	ConstLabels prometheus.Labels
+
+	// Create descriptors for collector leve metrics.
+	scrapeDurationDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
+		"isilon_exporter: Duration of a collector scrape,",
+		[]string{"collector"}, ConstLabels,
+	)
+	scrapeSuccessDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
+		"isilon_exporter: Whether a collector succeeded.",
+		[]string{"collector"}, ConstLabels,
+	)
+	exporterDurationDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "exporter", "duration_seconds"),
+		"Duration in second of the entire exporter run.",
+		nil, ConstLabels,
+	)
+	statsEngineCallFailure = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "stats_engine", "call_success"),
+		"0 = Successful, 1 = Failure.  Represent the successful call or failure to the stats engine.",
+		[]string{"stat_key"}, ConstLabels,
+	)
+	statsEngineCallDuration = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "stats_engine", "call_duration_seconds"),
+		"Duration in seconds a call to the stats engine takes.",
+		[]string{"stat_key"}, ConstLabels,
+	)
 )
 
 //IsilonCluster struct contains all the connection info and an instanciated client connection to the cluster.

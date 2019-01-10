@@ -23,21 +23,24 @@ import (
 )
 
 type quotaCollector struct {
-	quotaIterationCollectionTime   *prometheus.Desc
-	quotaContainer                 *prometheus.Desc
-	quotaEnforced                  *prometheus.Desc
-	quotaIncludeSnapshots          *prometheus.Desc
-	quotaUsageLogical              *prometheus.Desc
-	quotaUsageInodes               *prometheus.Desc
-	quotaUsagePhysical             *prometheus.Desc
-	quotaThresholdAdvisory         *prometheus.Desc
-	quotaThresholdAdvisoryExceeded *prometheus.Desc
-	quotaThresholdHard             *prometheus.Desc
-	quotaThresholdHardExceeded     *prometheus.Desc
-	quotaThresholdSoft             *prometheus.Desc
-	quotaThresholdSoftGrace        *prometheus.Desc
-	quotaThresholdSoftExceeded     *prometheus.Desc
-	quotaCollectedNumber           *prometheus.Desc
+	quotaIterationCollectionTime       *prometheus.Desc
+	quotaContainer                     *prometheus.Desc
+	quotaEnforced                      *prometheus.Desc
+	quotaIncludeSnapshots              *prometheus.Desc
+	quotaUsageLogical                  *prometheus.Desc
+	quotaUsageInodes                   *prometheus.Desc
+	quotaUsagePhysical                 *prometheus.Desc
+	quotaThresholdAdvisory             *prometheus.Desc
+	quotaThresholdAdvisoryExceeded     *prometheus.Desc
+	quotaThresholdAdvisoryLastExceeded *prometheus.Desc
+	quotaThresholdHard                 *prometheus.Desc
+	quotaThresholdHardExceeded         *prometheus.Desc
+	quotaThresholdHardLastExceeded     *prometheus.Desc
+	quotaThresholdSoft                 *prometheus.Desc
+	quotaThresholdSoftGrace            *prometheus.Desc
+	quotaThresholdSoftExceeded         *prometheus.Desc
+	quotaThresholdSoftLastExceeded     *prometheus.Desc
+	quotaCollectedNumber               *prometheus.Desc
 }
 
 var (
@@ -109,6 +112,11 @@ func NewQuotaCollector() (Collector, error) {
 			"1 if the advisory threshold has been hit.",
 			[]string{"id", "path", "name", "type"}, ConstLabels,
 		),
+		quotaThresholdAdvisoryLastExceeded: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "threshold_advisory_last_exceeded"),
+			"Timestamp of when threshold was last exceeded.",
+			[]string{"id", "path", "name", "type"}, ConstLabels,
+		),
 		quotaThresholdSoft: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "threshold_soft"),
 			"Usage bytes at which notifications will be sent and soft grace time will be started.",
@@ -124,6 +132,11 @@ func NewQuotaCollector() (Collector, error) {
 			"Time in seconds after which the soft threshold has been hit before writes will be denied.",
 			[]string{"id", "path", "name", "type"}, ConstLabels,
 		),
+		quotaThresholdSoftLastExceeded: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "threshold_soft_last_exceeded"),
+			"Timestamp of when threshold was last exceeded.",
+			[]string{"id", "path", "name", "type"}, ConstLabels,
+		),
 		quotaThresholdHard: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "threshold_hard"),
 			"Usage bytes at which further writes will be denied.",
@@ -132,6 +145,11 @@ func NewQuotaCollector() (Collector, error) {
 		quotaThresholdHardExceeded: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "threshold_hard_exceeded"),
 			"True if the hard threshold has been hit.",
+			[]string{"id", "path", "name", "type"}, ConstLabels,
+		),
+		quotaThresholdHardLastExceeded: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, quotaCollectorSubsystem, "threshold_hard_last_exceeded"),
+			"Timestamp of when threshold was last exceeded.",
 			[]string{"id", "path", "name", "type"}, ConstLabels,
 		),
 		quotaCollectedNumber: prometheus.NewDesc(
@@ -343,35 +361,60 @@ func (c *quotaCollector) updateUsage(ch chan<- prometheus.Metric, q isiclient.Is
 func (c *quotaCollector) updateThresholds(ch chan<- prometheus.Metric, q isiclient.IsiQuota, n string) error {
 	//gather advisory thresholds
 	var (
-		ae float64
-		he float64
-		se float64
+		ae  float64
+		he  float64
+		se  float64
+		ale float64
+		hle float64
+		sle float64
+		ok  bool
 	)
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdAdvisory, prometheus.GaugeValue, q.Thresholds.Advisory, q.ID, q.Path, n, q.Type)
 	if q.Thresholds.AdvisoryExceeded {
 		ae = 1
+		ale, ok = q.Thresholds.AdvisoryLastExceeded.(float64)
+		if !ok {
+			ale = 0
+			log.Warnf("Unable to convert advisory last exceeded timestamp to float: %s", q.Thresholds.AdvisoryLastExceeded)
+		}
 	} else {
 		ae = 0
+		ale = 0
 	}
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdAdvisoryExceeded, prometheus.GaugeValue, ae, q.ID, q.Path, n, q.Type)
+	ch <- prometheus.MustNewConstMetric(c.quotaThresholdAdvisoryLastExceeded, prometheus.GaugeValue, ale, q.ID, q.Path, n, q.Type)
 
 	//gather hard thresholds
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdHard, prometheus.GaugeValue, q.Thresholds.Hard, q.ID, q.Path, n, q.Type)
 	if q.Thresholds.HardExceeded {
 		he = 1
+		hle, ok = q.Thresholds.HardLastExceeded.(float64)
+		if !ok {
+			hle = 0
+			log.Warnf("Unable to convert hard last exceeded timestamp to float: %s", q.Thresholds.HardLastExceeded)
+		}
 	} else {
 		he = 0
+		hle = 0
 	}
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdHardExceeded, prometheus.GaugeValue, he, q.ID, q.Path, n, q.Type)
+	ch <- prometheus.MustNewConstMetric(c.quotaThresholdHardLastExceeded, prometheus.GaugeValue, hle, q.ID, q.Path, n, q.Type)
 
 	//gather soft thresholds
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdSoft, prometheus.GaugeValue, q.Thresholds.Soft, q.ID, q.Path, n, q.Type)
 	if q.Thresholds.SoftExceeded {
 		se = 1
+		sle, ok = q.Thresholds.SoftLastExceeded.(float64)
+		if !ok {
+			sle = 0
+			log.Warnf("Unable to convert soft last exceeded timestamp to float: %s", q.Thresholds.SoftLastExceeded)
+		}
 	} else {
 		se = 0
+		sle = 0
 	}
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdSoftExceeded, prometheus.GaugeValue, se, q.ID, q.Path, n, q.Type)
+	ch <- prometheus.MustNewConstMetric(c.quotaThresholdSoftLastExceeded, prometheus.GaugeValue, sle, q.ID, q.Path, n, q.Type)
 	ch <- prometheus.MustNewConstMetric(c.quotaThresholdSoftGrace, prometheus.GaugeValue, q.Thresholds.SoftGrace, q.ID, q.Path, n, q.Type)
 	return nil
 }

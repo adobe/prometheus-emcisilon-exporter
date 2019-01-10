@@ -12,6 +12,9 @@ written permission of Adobe.
 package collector
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -77,6 +80,7 @@ func NewCapacityCollector() (Collector, error) {
 }
 
 func (c *capacityCollector) Update(ch chan<- prometheus.Metric) error {
+	var errCount int64
 	keyMap := make(map[*prometheus.Desc]string)
 
 	keyMap[c.bytesTotal] = "ifs.bytes.total"
@@ -88,17 +92,25 @@ func (c *capacityCollector) Update(ch chan<- prometheus.Metric) error {
 	keyMap[c.percentFree] = "ifs.percent.free"
 
 	for promStat, statKey := range keyMap {
+		begin := time.Now()
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
+		duration := time.Since(begin)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), statKey)
 		if err != nil {
 			log.Warnf("Error attempting to query stats engine with key %s: %s", statKey, err)
-		}
-		for _, stat := range resp.Stats {
-			val := stat.Value
-			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val)
-			if err != nil {
-				log.Infof("Unable to update capacity metric for %s", statKey)
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, statKey)
+			errCount++
+		} else {
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
+			for _, stat := range resp.Stats {
+				val := stat.Value
+				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val)
 			}
 		}
+	}
+	if errCount != 0 {
+		err := fmt.Errorf("There where %v errors", errCount)
+		return err
 	}
 	return nil
 }

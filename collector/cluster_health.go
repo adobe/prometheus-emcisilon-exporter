@@ -12,6 +12,9 @@ written permission of Adobe.
 package collector
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -43,24 +46,38 @@ func NewClusterHealthCollector() (Collector, error) {
 }
 
 func (c *clusterHealthCollector) Update(ch chan<- prometheus.Metric) error {
+	var errCount int64
 	keyMap := make(map[*prometheus.Desc]string)
 
 	keyMap[c.clusterHealth] = "cluster.health"
 
 	for promStat, statKey := range keyMap {
+		begin := time.Now()
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
+		duration := time.Since(begin)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), statKey)
 		if err != nil {
 			log.Warnf("Error attempting to query stats engine with key %s: %s", statKey, err)
-		}
-		for _, stat := range resp.Stats {
-			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value)
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, statKey)
+			errCount++
+		} else {
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
+			for _, stat := range resp.Stats {
+				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value)
+			}
 		}
 	}
 
 	version, err := isiclient.GetOneFsVersion(IsiCluster.Client)
 	if err != nil {
 		log.Warnf("Unable to update the Onefs version stat.")
+		errCount++
 	}
 	ch <- prometheus.MustNewConstMetric(c.onefsVersion, prometheus.GaugeValue, 1, version)
+
+	if errCount != 0 {
+		err := fmt.Errorf("There where %v errors", errCount)
+		return err
+	}
 	return nil
 }

@@ -13,6 +13,7 @@ package collector
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,6 +64,7 @@ func NewDiskCollector() (Collector, error) {
 }
 
 func (c *diskCollector) Update(ch chan<- prometheus.Metric) error {
+	var errCount int64
 	keyMap := make(map[*prometheus.Desc]string)
 
 	keyMap[c.diskBusyAll] = "node.disk.busy.all"
@@ -72,22 +74,32 @@ func (c *diskCollector) Update(ch chan<- prometheus.Metric) error {
 	keyMap[c.diskLatencyAll] = "node.disk.access.latency.all"
 
 	for promStat, statKey := range keyMap {
+		begin := time.Now()
 		resp, err := isiclient.QueryStatsEngineMultiVal(IsiCluster.Client, statKey)
+		duration := time.Since(begin)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), statKey)
 		if err != nil {
 			log.Warnf("Error attempting to query stats engine with key %s: %s", statKey, err)
-			return err
-		}
-		for _, stat := range resp.Stats {
-			node := fmt.Sprintf("%v", stat.Devid)
-			for _, valset := range stat.ValueSet {
-				for disk, val := range valset {
-					if statKey == "node.disk.busy.all" {
-						val = val / 10
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, statKey)
+			errCount++
+		} else {
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
+			for _, stat := range resp.Stats {
+				node := fmt.Sprintf("%v", stat.Devid)
+				for _, valset := range stat.ValueSet {
+					for disk, val := range valset {
+						if statKey == "node.disk.busy.all" {
+							val = val / 10
+						}
+						ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val, node, disk)
 					}
-					prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val, node, disk)
 				}
 			}
 		}
+	}
+	if errCount != 0 {
+		err := fmt.Errorf("There where %v errors", errCount)
+		return err
 	}
 	return nil
 }

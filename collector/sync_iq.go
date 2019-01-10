@@ -97,5 +97,5 @@ func (c *syncIQPoliciesCollector) Update(ch chan<- prometheus.Metric) error {
 		ch <- prometheus.MustNewConstMetric(c.syncPolicyState, prometheus.GaugeValue, state, policy.Name)
 		ch <- prometheus.MustNewConstMetric(c.syncPolicyWorkersPerNode, prometheus.GaugeValue, policy.WorkersPerNode, policy.Name)
 	}
-	return nil
+	return err
 }

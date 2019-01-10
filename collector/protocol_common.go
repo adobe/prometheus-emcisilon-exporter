@@ -35,7 +35,7 @@ var (
 		"nfs":       defaultEnabled,
 		"nfs3":      defaultEnabled,
 		"nfs4":      defaultDisabled,
-		"nlm":       defaultDisabled,
+		"nlm":       defaultEnabled,
 		"papi":      defaultEnabled,
 		"siq":       defaultEnabled,
 		"smb1":      defaultDisabled,
