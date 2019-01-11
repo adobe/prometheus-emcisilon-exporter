@@ -26,6 +26,8 @@ type nodeStatusCollector struct {
 	nodeInfo        *prometheus.Desc
 }
 
+var state float64
+
 func init() {
 	registerCollector("node_info", defaultEnabled, NewNodeStatusCollector)
 }
@@ -50,7 +52,7 @@ func NewNodeStatusCollector() (Collector, error) {
 		),
 		nodeDriveState: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "drive_state"),
-			"Current state of the drive in a bay. 0 = Healthy, 1 = Unhealthy.",
+			"Current state of the drive in a bay. 0 = HEALTHY/L3, 1 = STALLED, 2 = FW_UPDATE, 3 = SMARTFAILED, 10 = NEW, 11 = EMPTY, 12 = REPLACE, 99 = UNKNOWN.",
 			[]string{"node", "node_id", "bay_num", "media_type", "model", "interaface_type", "dev_name", "state"}, ConstLabels,
 		),
 	}, nil
@@ -131,13 +133,26 @@ func (c *nodeStatusCollector) updateDriveStatus(ch chan<- prometheus.Metric) err
 		nodeID := fmt.Sprintf("%v", node.ID)
 		nodeLNN := fmt.Sprintf("%v", node.Lnn)
 		for _, drive := range node.Drives {
-			var state float64
 			bayID := fmt.Sprintf("%v", drive.Baynum)
 			devID := fmt.Sprintf("%v", drive.Devname)
-			if drive.UIState == "HEALTHY" || drive.UIState == "L3" {
+
+			switch drive.UIState {
+			case "HEALTHY", "L3":
 				state = 0
-			} else {
+			case "STALLED":
 				state = 1
+			case "FW_UPDATE":
+				state = 2
+			case "SMARTFAIL":
+				state = 3
+			case "NEW":
+				state = 10
+			case "EMPTY":
+				state = 11
+			case "REPLACE":
+				state = 12
+			default:
+				state = 99
 			}
 			ch <- prometheus.MustNewConstMetric(c.nodeDriveState, prometheus.GaugeValue, state, nodeLNN, nodeID, bayID, drive.MediaType, drive.Model, drive.InterfaceType, devID, drive.UIState)
 		}
