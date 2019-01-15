@@ -38,6 +38,20 @@ Collectors can be enabled by using `--collector.<name>` or disabled with `--no-c
 
 ##### Configuration
 
+###### Modify Current thecodeteam goisilon
+
+With Onefs 8.1.X.X the latest api version is 5.1.  This breaks goisilon as the creation of a new client attempts to parse the return of /platform/latest into an int.  As such the code must be modified to parse the return into a float.  You can change the line 182 in goisilon/api/api.go.
+
+Original:
+
+i, err := strconv.ParseUint(*resp.Latest, 10, 8)
+
+Required Modificaiton:
+
+i, err := strconv.ParseFloat(*resp.Latest, 64)
+
+
+
 ###### System Flags
 
 | Program Flags   | Description | Default Value | Required |
