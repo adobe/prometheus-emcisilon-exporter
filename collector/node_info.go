@@ -52,7 +52,7 @@ func NewNodeStatusCollector() (Collector, error) {
 		),
 		nodeDriveState: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "drive_state"),
-			"Current state of the drive in a bay. 0 = HEALTHY/L3, 1 = STALLED, 2 = FW_UPDATE, 3 = SMARTFAILED, 10 = NEW, 11 = EMPTY, 12 = REPLACE, 99 = UNKNOWN.",
+			"Current state of the drive in a bay. 0 = HEALTHY/L3, 1 = STALLED, 2 = FW_UPDATE, 3 = SMARTFAILED, 4 = USED, 5 = PREPARING, 10 = NEW, 11 = EMPTY, 12 = REPLACE, 99 = UNKNOWN.",
 			[]string{"node", "node_id", "bay_num", "media_type", "model", "interaface_type", "dev_name", "state"}, ConstLabels,
 		),
 	}, nil
@@ -145,6 +145,10 @@ func (c *nodeStatusCollector) updateDriveStatus(ch chan<- prometheus.Metric) err
 				state = 2
 			case "SMARTFAIL":
 				state = 3
+			case "USED":
+				state = 4
+			case "PREPARING":
+				state = 5
 			case "NEW":
 				state = 10
 			case "EMPTY":

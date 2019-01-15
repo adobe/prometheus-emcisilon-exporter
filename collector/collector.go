@@ -91,6 +91,33 @@ func NewIsilonCollector(fqdn string, port string, uname string, pwdenv string, s
 			flag := kingpin.Flag("collector.quota.retry", "Number of time to attempt collection of quota metrics (default: 3).").Default("3").Int64()
 			IsiCluster.Quotas.Retry = *flag
 		}
+
+		// Create descriptors for collector leve metrics.
+		scrapeDurationDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
+			"isilon_exporter: Duration of a collector scrape,",
+			[]string{"collector"}, ConstLabels,
+		)
+		scrapeSuccessDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "scrape", "collector_success"),
+			"isilon_exporter: Whether a collector succeeded.",
+			[]string{"collector"}, ConstLabels,
+		)
+		exporterDurationDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "exporter", "duration_seconds"),
+			"Duration in second of the entire exporter run.",
+			nil, ConstLabels,
+		)
+		statsEngineCallFailure = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "stats_engine", "call_success"),
+			"0 = Successful, 1 = Failure.  Represent the successful call or failure to the stats engine.",
+			[]string{"stat_key"}, ConstLabels,
+		)
+		statsEngineCallDuration = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "stats_engine", "call_duration_seconds"),
+			"Duration in seconds a call to the stats engine takes.",
+			[]string{"stat_key"}, ConstLabels,
+		)
 	}
 
 	//If qOnly then set all collectors to disabled except for quotas
