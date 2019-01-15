@@ -15,7 +15,7 @@ import (
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
-	"github.com/thecodeteam/goisilon"
+	"github.com/hpanike/goisilon"
 )
 
 var (

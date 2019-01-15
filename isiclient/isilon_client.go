@@ -17,8 +17,8 @@ import (
 	"os"
 
 	"github.com/prometheus/common/log"
-	"github.com/thecodeteam/goisilon"
-	"github.com/thecodeteam/goisilon/api"
+	"github.com/hpanike/goisilon"
+	"github.com/hpanike/goisilon/api"
 )
 
 // NewIsilonClient creates and isilon client from goisilon.NewClientsWithArgs.

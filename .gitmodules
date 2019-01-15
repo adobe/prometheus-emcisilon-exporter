@@ -7,3 +7,6 @@
 [submodule "vendor/github.com/thecodeteam/goisilon"]
 	path = vendor/github.com/thecodeteam/goisilon
 	url = https://github.com/thecodeteam/goisilon.git
+[submodule "vendor/github.com/hpanike/goisilon"]
+	path = vendor/github.com/hpanike/goisilon
+	url = https://github.com/hpanike/goisilon.git
