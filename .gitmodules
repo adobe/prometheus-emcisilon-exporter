@@ -4,3 +4,6 @@
 [submodule "vendor/github.com/prometheus/common"]
 	path = vendor/github.com/prometheus/common
 	url = https://github.com/prometheus/common.git
+[submodule "vendor/github.com/thecodeteam/goisilon"]
+	path = vendor/github.com/thecodeteam/goisilon
+	url = https://github.com/thecodeteam/goisilon.git
