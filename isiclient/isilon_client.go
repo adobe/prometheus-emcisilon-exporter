@@ -17,14 +17,13 @@ import (
 	"os"
 
 	"github.com/prometheus/common/log"
-	"github.com/thecodeteam/goisilon"
-	"github.com/thecodeteam/goisilon/api"
+	"github.com/hpanike/goisilon"
+	"github.com/hpanike/goisilon/api"
 )
 
 // NewIsilonClient creates and isilon client from goisilon.NewClientsWithArgs.
 func NewIsilonClient(fqdn string, port string, username string, passwordEnv string) (*goisilon.Client, error) {
 	// Setup the client from the cluster info and return the client.
-
 	//Build endpoint from fqdn and port. Force HTTPS as we are using basic auth.
 	endpoint := fmt.Sprintf("https://%s:%s", fqdn, port)
 
@@ -48,7 +47,7 @@ func NewIsilonClient(fqdn string, port string, username string, passwordEnv stri
 		"",
 	)
 	if err != nil {
-		log.Warnf("Could not create connection Isilon Cluster %s: %s", endpoint, err)
+		log.Warnf("Could not create connection to Isilon Cluster %s: %s", endpoint, err)
 		return nil, err
 	}
 	return c, nil

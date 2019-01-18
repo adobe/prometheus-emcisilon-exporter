@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -181,6 +182,8 @@ func NewNodeProtoCollector() (Collector, error) {
 }
 
 func (c *nodeProtoCollector) Update(ch chan<- prometheus.Metric) error {
+	var errCount int64
+
 	//Set client stats for nfs and smb to ungathered
 	nfsClientstatGathered = false
 	smbClientstatsGathered = false
@@ -193,22 +196,27 @@ func (c *nodeProtoCollector) Update(ch chan<- prometheus.Metric) error {
 			err = c.updateProtoOpStats(ch, proto)
 			if err != nil {
 				log.Warnf("Unabled to collect protocol operation stats for %s", proto)
+				errCount++
 			}
 			err = c.updateProtoStats(ch, proto)
 			if err != nil {
 				log.Warnf("Unable to collect protocol stats for %s", proto)
+				errCount++
 			}
 			err = c.updateProtoClientstatsActive(ch, proto)
 			if err != nil {
 				log.Warnf("Unable to collect protocol stats for %s", proto)
+				errCount++
 			}
 			err = c.updateProtoClientstatsConnected(ch, proto)
 			if err != nil {
 				log.Warnf("Unable to collect protocol stats for %s", proto)
+				errCount++
 			}
 		}
 	}
-	if err != nil {
+	if errCount != 0 {
+		err := fmt.Errorf("There where %v errors", errCount)
 		return err
 	}
 	return nil
@@ -216,11 +224,17 @@ func (c *nodeProtoCollector) Update(ch chan<- prometheus.Metric) error {
 
 func (c *nodeProtoCollector) updateProtoOpStats(ch chan<- prometheus.Metric, protocol string) error {
 	key := fmt.Sprintf("node.protostats.%v", protocol)
+	begin := time.Now()
 	resp, err := isiclient.GetProtoStat(IsiCluster.Client, key)
+	duration := time.Since(begin)
+	ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), key)
 	if err != nil {
 		log.Warnf("Unable to collect node protocol stats for protocol %s.", protocol)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, key)
 		return err
 	}
+	ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, key)
+
 	//Get stats for each node
 	for _, stat := range resp.Stats {
 		if stat.Value != nil {
@@ -261,11 +275,17 @@ func (c *nodeProtoCollector) updateProtoOpStats(ch chan<- prometheus.Metric, pro
 
 func (c *nodeProtoCollector) updateProtoStats(ch chan<- prometheus.Metric, protocol string) error {
 	key := fmt.Sprintf("node.protostats.%s.total", protocol)
+	begin := time.Now()
 	resp, err := isiclient.GetProtoStat(IsiCluster.Client, key)
+	duration := time.Since(begin)
+	ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), key)
 	if err != nil {
 		log.Warnf("Unable to collect node protocol stats for protocol %s.", protocol)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, key)
 		return err
 	}
+	ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, key)
+
 	for _, stat := range resp.Stats {
 		if stat.Value != nil {
 			values := stat.Value.([]interface{})
@@ -312,11 +332,16 @@ func (c *nodeProtoCollector) updateProtoClientstatsActive(ch chan<- prometheus.M
 	activeKey := fmt.Sprintf("node.clientstats.active.%s", protocol)
 
 	// Both stats are single stat values in the normal format
+	begin := time.Now()
 	resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, activeKey)
+	duration := time.Since(begin)
+	ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), activeKey)
 	if err != nil {
 		log.Warnf("Unable to collect node protocol client stats for protocol %s.", protocol)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, activeKey)
 		return err
 	}
+	ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, activeKey)
 
 	for _, stat := range resp.Stats {
 		node := fmt.Sprintf("%v", stat.Devid)
@@ -352,11 +377,17 @@ func (c *nodeProtoCollector) updateProtoClientstatsConnected(ch chan<- prometheu
 
 	connectedKey := fmt.Sprintf("node.clientstats.connected.%s", protocol)
 
+	begin := time.Now()
 	resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, connectedKey)
+	duration := time.Since(begin)
+	ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), connectedKey)
 	if err != nil {
 		log.Warnf("Unable to collect node protocol client stats for protocol %s.", protocol)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, connectedKey)
 		return err
 	}
+	ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, connectedKey)
+
 	for _, stat := range resp.Stats {
 		node := fmt.Sprintf("%v", stat.Devid)
 		ch <- prometheus.MustNewConstMetric(c.nodeClientsConnected, prometheus.GaugeValue, stat.Value, node, protocol)

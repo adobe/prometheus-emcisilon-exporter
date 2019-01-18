@@ -14,6 +14,7 @@ package collector
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -76,6 +77,7 @@ func NewCPUCollector() (Collector, error) {
 }
 
 func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
+	var errCount int64
 	keyMap := make(map[*prometheus.Desc]string)
 
 	keyMap[c.cpuCount] = "node.cpu.count"
@@ -87,24 +89,35 @@ func (c *cpuCollector) Update(ch chan<- prometheus.Metric) error {
 	keyMap[c.load15min] = "node.load.15min"
 
 	for promStat, statKey := range keyMap {
+		begin := time.Now()
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
+		duration := time.Since(begin)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), statKey)
 		if err != nil {
 			log.Warnf("Error attempting to query stats engine with key %s: %s", statKey, err)
-			return err
-		}
-		for _, stat := range resp.Stats {
-			var val float64
-			node := fmt.Sprintf("%v", stat.Devid)
-			if strings.Contains(statKey, "cpu") {
-				if !(strings.Contains(statKey, "count")) {
-					val = stat.Value / 10
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, statKey)
+			errCount++
+		} else {
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
+			for _, stat := range resp.Stats {
+				var val float64
+				node := fmt.Sprintf("%v", stat.Devid)
+				if strings.Contains(statKey, "cpu") {
+					if !(strings.Contains(statKey, "count")) {
+						val = stat.Value / 10
+					}
 				}
+				if strings.Contains(statKey, "load") {
+					val = stat.Value / 100
+				}
+				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val, node)
 			}
-			if strings.Contains(statKey, "load") {
-				val = stat.Value / 100
-			}
-			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val, node)
 		}
+	}
+
+	if errCount != 0 {
+		err := fmt.Errorf("There where %v errors", errCount)
+		return err
 	}
 	return nil
 }

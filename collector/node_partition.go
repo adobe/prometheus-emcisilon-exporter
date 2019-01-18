@@ -38,27 +38,27 @@ func NewNodePartitionCollector() (Collector, error) {
 		nodePartitionUsedSpacePercentage: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "partition_used_space_percentage"),
 			"Percentage of space used on a partition.",
-			[]string{"node", "mount_point"}, ConstLabels,
+			[]string{"node", "node_id", "mount_point"}, ConstLabels,
 		),
 		nodePartitionCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "partition_count"),
 			"Count of the total number of partitions on a node.",
-			[]string{"node"}, ConstLabels,
+			[]string{"node", "node_id"}, ConstLabels,
 		),
 		nodePartitionFileNodesFree: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "partition_filenodes_free"),
 			"Number of filenodes free on a partition.",
-			[]string{"node", "mount_point"}, ConstLabels,
+			[]string{"node", "node_id", "mount_point"}, ConstLabels,
 		),
 		nodePartitionFileNodesTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "partition_filenodes_total"),
 			"Total number of filenodes on a partition.",
-			[]string{"node", "mount_point"}, ConstLabels,
+			[]string{"node", "node_id", "mount_point"}, ConstLabels,
 		),
 		nodePartitionFileNodesFreePercent: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "partition_filenodes_free_percent"),
 			"Percentage of filenodes free on a partition.",
-			[]string{"node", "mount_point"}, ConstLabels,
+			[]string{"node", "node_id", "mount_point"}, ConstLabels,
 		),
 	}, nil
 }
@@ -76,7 +76,8 @@ func (c *nodePartitionCollector) updatePartitionStats(ch chan<- prometheus.Metri
 
 	for _, node := range resp.Nodes {
 		nodeID := fmt.Sprintf("%v", node.ID)
-		ch <- prometheus.MustNewConstMetric(c.nodePartitionCount, prometheus.GaugeValue, node.Count, nodeID)
+		nodeLNN := fmt.Sprintf("%v", node.Lnn)
+		ch <- prometheus.MustNewConstMetric(c.nodePartitionCount, prometheus.GaugeValue, node.Count, nodeLNN, nodeID)
 		for _, partition := range node.Partitions {
 			if strings.Contains(partition.MountPoint, "Unknown") {
 				continue
@@ -86,12 +87,12 @@ func (c *nodePartitionCollector) updatePartitionStats(ch chan<- prometheus.Metri
 				log.Infof("Error converting used percentage: %s", err)
 			}
 			usedPercentage := float64(used) / 100.0
-			ch <- prometheus.MustNewConstMetric(c.nodePartitionUsedSpacePercentage, prometheus.GaugeValue, usedPercentage, nodeID, partition.MountPoint)
+			ch <- prometheus.MustNewConstMetric(c.nodePartitionUsedSpacePercentage, prometheus.GaugeValue, usedPercentage, nodeLNN, nodeID, partition.MountPoint)
 
 			percentFree := partition.Statfs.FFfree / partition.Statfs.FFiles
-			ch <- prometheus.MustNewConstMetric(c.nodePartitionFileNodesFreePercent, prometheus.GaugeValue, percentFree, nodeID, partition.MountPoint)
-			ch <- prometheus.MustNewConstMetric(c.nodePartitionFileNodesFree, prometheus.GaugeValue, partition.Statfs.FFfree, nodeID, partition.MountPoint)
-			ch <- prometheus.MustNewConstMetric(c.nodePartitionFileNodesTotal, prometheus.GaugeValue, partition.Statfs.FFiles, nodeID, partition.MountPoint)
+			ch <- prometheus.MustNewConstMetric(c.nodePartitionFileNodesFreePercent, prometheus.GaugeValue, percentFree, nodeLNN, nodeID, partition.MountPoint)
+			ch <- prometheus.MustNewConstMetric(c.nodePartitionFileNodesFree, prometheus.GaugeValue, partition.Statfs.FFfree, nodeLNN, nodeID, partition.MountPoint)
+			ch <- prometheus.MustNewConstMetric(c.nodePartitionFileNodesTotal, prometheus.GaugeValue, partition.Statfs.FFiles, nodeLNN, nodeID, partition.MountPoint)
 		}
 	}
 	return err

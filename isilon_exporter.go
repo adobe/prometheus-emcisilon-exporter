@@ -51,9 +51,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	//Creates a new isilon collector with filters applied. (Kingpin flags)
 	nc, err := collector.NewIsilonCollector(*fqdn, *port, *uname, *pwdenv, *site, true, *qOnly, filters...)
 	if err != nil {
-		log.Warnln("Could not create %s", err)
+		log.Warnf("Could not create exporter: %s", err)
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Could not create %s", err)))
+		w.Write([]byte(fmt.Sprintf("Could not create exporter: %s", err)))
 		return
 	}
 

@@ -13,6 +13,7 @@ package collector
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -65,14 +66,19 @@ func (c *networkCollector) Update(ch chan<- prometheus.Metric) error {
 	keyMap[c.netErrorsOutRate] = "node.net.ext.errors.out.rate"
 
 	for promStat, statKey := range keyMap {
+		begin := time.Now()
 		resp, err := isiclient.QueryStatsEngineSingleVal(IsiCluster.Client, statKey)
+		duration := time.Since(begin)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), statKey)
 		if err != nil {
 			log.Warnf("Error attempting to query stats engine with key %s: %s", statKey, err)
-			return err
-		}
-		for _, stat := range resp.Stats {
-			node := fmt.Sprintf("%v", stat.Devid)
-			ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value, node)
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, statKey)
+		} else {
+			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
+			for _, stat := range resp.Stats {
+				node := fmt.Sprintf("%v", stat.Devid)
+				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value, node)
+			}
 		}
 	}
 	return nil

@@ -13,6 +13,7 @@ package collector
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
@@ -111,32 +112,32 @@ func NewClusterProtoCollector() (Collector, error) {
 		),
 		clusterProtocolTotalInMax: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, clusterCollectorSubsystem, "protostats_in_max_total"),
-			"Total cluster node protocol operation in max.",
+			"Total cluster protocol operation in max.",
 			[]string{"proto"}, ConstLabels,
 		),
 		clusterProtocolTotalInMin: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, clusterCollectorSubsystem, "protostats_in_min_total"),
-			"Total cluster node protocol operation in min.",
+			"Total cluster protocol operation in min.",
 			[]string{"proto"}, ConstLabels,
 		),
 		clusterProtocolTotalInRate: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, clusterCollectorSubsystem, "protostats_in_rate_total"),
-			"Total cluster node protocol operation in rate.",
+			"Total cluster protocol operation in rate.",
 			[]string{"proto"}, ConstLabels,
 		),
 		clusterProtocolTotalOpCount: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, clusterCollectorSubsystem, "protostats_op_count_total"),
-			"Total cluster node protocol operation count.",
+			"Total cluster protocol operation count.",
 			[]string{"proto"}, ConstLabels,
 		),
 		clusterProtocolTotalOpRate: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, clusterCollectorSubsystem, "protostats_op_rate_total"),
-			"Total cluster node protocol operation rate.",
+			"Total cluster protocol operation rate.",
 			[]string{"proto"}, ConstLabels,
 		),
 		clusterProtocolTotalOutMax: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, clusterCollectorSubsystem, "protostats_out_max_total"),
-			"Total cluster node protocol operation out max.",
+			"Total cluster protocol operation out max.",
 			[]string{"proto"}, ConstLabels,
 		),
 		clusterProtocolTotalOutMin: prometheus.NewDesc(
@@ -173,6 +174,7 @@ func (c *clusterProtoCollector) Update(ch chan<- prometheus.Metric) error {
 	smbClientstatsGathered = false
 
 	var err error
+	var errCount int64
 	//Attempt to update over the list of all protocol
 	for proto, state := range protocolState {
 		// Only execute if state is true
@@ -180,26 +182,35 @@ func (c *clusterProtoCollector) Update(ch chan<- prometheus.Metric) error {
 			err = c.updateProtoOpStats(ch, proto)
 			if err != nil {
 				log.Warnf("Unabled to collect protocol operation stats for %s", proto)
-				return err
+				errCount++
 			}
 			err = c.updateProtoStats(ch, proto)
 			if err != nil {
 				log.Warnf("Unable to collect protocol stats for %s", proto)
+				errCount++
 			}
 		}
 	}
 
-	return err
+	if errCount != 0 {
+		err = fmt.Errorf("There where %v errors", errCount)
+		return err
+	}
+	return nil
 }
 
 func (c *clusterProtoCollector) updateProtoOpStats(ch chan<- prometheus.Metric, protocol string) error {
 	key := fmt.Sprintf("cluster.protostats.%v", protocol)
+	begin := time.Now()
 	resp, err := isiclient.GetProtoStat(IsiCluster.Client, key)
+	duration := time.Since(begin)
+	ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), key)
 	if err != nil {
-		log.Warnf("Unable to collect node protocol stats for protocol %s.", protocol)
+		log.Warnf("Unable to collect protocol stats for protocol %s.", protocol)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, key)
 		return err
 	}
-	//Get stats for each node
+	ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, key)
 	for _, stat := range resp.Stats {
 		if stat.Value != nil {
 			values := stat.Value.([]interface{})
@@ -239,11 +250,17 @@ func (c *clusterProtoCollector) updateProtoOpStats(ch chan<- prometheus.Metric, 
 
 func (c *clusterProtoCollector) updateProtoStats(ch chan<- prometheus.Metric, protocol string) error {
 	key := fmt.Sprintf("cluster.protostats.%s.total", protocol)
+	begin := time.Now()
 	resp, err := isiclient.GetProtoStat(IsiCluster.Client, key)
+	duration := time.Since(begin)
+	ch <- prometheus.MustNewConstMetric(statsEngineCallDuration, prometheus.GaugeValue, duration.Seconds(), key)
 	if err != nil {
-		log.Warnf("Unable to collect node protocol stats for protocol %s.", protocol)
+		log.Warnf("Unable to collect cluster protocol stats for protocol %s.", protocol)
+		ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 1, key)
 		return err
 	}
+	ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, key)
+
 	for _, stat := range resp.Stats {
 		if stat.Value != nil {
 			values := stat.Value.([]interface{})

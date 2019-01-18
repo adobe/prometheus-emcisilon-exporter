@@ -15,7 +15,7 @@ import (
 	"github.com/adobe/prometheus-emcisilon-exporter/isiclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
-	"github.com/thecodeteam/goisilon"
+	"github.com/hpanike/goisilon"
 )
 
 var (
@@ -23,6 +23,12 @@ var (
 	IsiCluster IsilonCluster
 	//ConstLabels are constant labels that every metric will have.  This includes the label cluster.
 	ConstLabels prometheus.Labels
+
+	statsEngineCallDuration *prometheus.Desc
+	statsEngineCallFailure  *prometheus.Desc
+	exporterDurationDesc    *prometheus.Desc
+	scrapeSuccessDesc       *prometheus.Desc
+	scrapeDurationDesc      *prometheus.Desc
 )
 
 //IsilonCluster struct contains all the connection info and an instanciated client connection to the cluster.

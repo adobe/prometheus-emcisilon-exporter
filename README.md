@@ -24,7 +24,7 @@ This exporter will run on any supported go platform. To build run: `go build`
     "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
     "gopkg.in/alecthomas/kingpin.v2"
-    "github.com/thecodeteam/goisilon"
+    "github.com/hpanike/goisilon"
 
 #### Run
 
