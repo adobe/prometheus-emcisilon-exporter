@@ -43,12 +43,12 @@ func NewNodeStatusCollector() (Collector, error) {
 		nodeBattery: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "status_battery"),
 			"Status for batteries.",
-			[]string{"node", "node_id", "battery"}, ConstLabels,
+			[]string{"node", "node_id", "result1", "result2"}, ConstLabels,
 		),
 		nodePowerSupply: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "status_power_supply"),
 			"Status for power supplies.",
-			[]string{"node", "node_id", "power_supply"}, ConstLabels,
+			[]string{"node", "node_id", "power_supply", "status"}, ConstLabels,
 		),
 		nodeDriveState: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "drive_state"),
@@ -84,23 +84,18 @@ func (c *nodeStatusCollector) Update(ch chan<- prometheus.Metric) error {
 
 func (c *nodeStatusCollector) updateBatteryStatus(ch chan<- prometheus.Metric, nodeStatus isiclient.IsiNodesStatus) error {
 	for _, node := range nodeStatus.Nodes {
+		var status float64
 		nodeID := fmt.Sprintf("%v", node.ID)
 		nodeLNN := fmt.Sprintf("%v", node.Lnn)
 
-		bs1 := strings.ToLower(node.Batterystatus.Status1)
-		bs2 := strings.ToLower(node.Batterystatus.Status2)
+		b1, b2 := c.checkStatus(node.Batterystatus.Result1), c.checkStatus(node.Batterystatus.Result2)
 
-		if (strings.Contains(bs1, "good") || strings.Contains(bs1, "ready")) && !(strings.Contains(bs1, "N/A")) {
-			ch <- prometheus.MustNewConstMetric(c.nodeBattery, prometheus.GaugeValue, float64(0), nodeLNN, nodeID, "1")
-		} else if !(strings.Contains(bs1, "n/a")) {
-			ch <- prometheus.MustNewConstMetric(c.nodeBattery, prometheus.GaugeValue, float64(1), nodeLNN, nodeID, "1")
+		if v := b1 + b2; v == 1 {
+			status = 0
+		} else {
+			status = 1
 		}
-
-		if (strings.Contains(bs2, "good") || strings.Contains(bs2, "ready")) && !(strings.Contains(bs2, "N/A")) {
-			ch <- prometheus.MustNewConstMetric(c.nodeBattery, prometheus.GaugeValue, float64(0), nodeLNN, nodeID, "2")
-		} else if !(strings.Contains(bs2, "n/a")) {
-			ch <- prometheus.MustNewConstMetric(c.nodeBattery, prometheus.GaugeValue, float64(1), nodeLNN, nodeID, "2")
-		}
+		ch <- prometheus.MustNewConstMetric(c.nodeBattery, prometheus.GaugeValue, status, nodeLNN, nodeID, node.Batterystatus.Result1, node.Batterystatus.Result2)
 	}
 	return nil
 }
@@ -117,7 +112,7 @@ func (c *nodeStatusCollector) updatePowerSupplyStatus(ch chan<- prometheus.Metri
 			} else {
 				status = 1
 			}
-			ch <- prometheus.MustNewConstMetric(c.nodePowerSupply, prometheus.GaugeValue, status, nodeLNN, nodeID, supplyID)
+			ch <- prometheus.MustNewConstMetric(c.nodePowerSupply, prometheus.GaugeValue, status, nodeLNN, nodeID, supplyID, powerSupply.Status)
 		}
 	}
 	return nil
@@ -246,4 +241,13 @@ func (c *nodeStatusCollector) labelTrimmer(label string) (string, error) {
 		return label, fmt.Errorf("Unable to split label string")
 	}
 	return substrings[0], nil
+}
+
+func (c *nodeStatusCollector) checkStatus(status string) float64 {
+	switch status {
+	case "passed":
+		return 0
+	default:
+		return 1
+	}
 }

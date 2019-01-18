@@ -103,13 +103,12 @@ func (c *capacityCollector) Update(ch chan<- prometheus.Metric) error {
 		} else {
 			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
 			for _, stat := range resp.Stats {
-				val := stat.Value
-				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, val)
+				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value)
 			}
 		}
 	}
 	if errCount != 0 {
-		err := fmt.Errorf("There where %v errors", errCount)
+		err := fmt.Errorf("There where %d errors", errCount)
 		return err
 	}
 	return nil
