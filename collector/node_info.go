@@ -90,7 +90,7 @@ func (c *nodeStatusCollector) updateBatteryStatus(ch chan<- prometheus.Metric, n
 
 		b1, b2 := c.checkStatus(node.Batterystatus.Result1), c.checkStatus(node.Batterystatus.Result2)
 
-		if v := b1 + b2; v == 1 {
+		if v := b1 + b2; v == 0 {
 			status = 0
 		} else {
 			status = 1
@@ -245,7 +245,7 @@ func (c *nodeStatusCollector) labelTrimmer(label string) (string, error) {
 
 func (c *nodeStatusCollector) checkStatus(status string) float64 {
 	switch status {
-	case "passed":
+	case "passed", "N/A":
 		return 0
 	default:
 		return 1
