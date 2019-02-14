@@ -48,7 +48,7 @@ func NewNodeStatusCollector() (Collector, error) {
 		nodePowerSupply: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "status_power_supply"),
 			"Status for power supplies.",
-			[]string{"node", "node_id", "power_supply", "status"}, ConstLabels,
+			[]string{"node", "node_id", "power_supply", "status", "good"}, ConstLabels,
 		),
 		nodeDriveState: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "drive_state"),
@@ -112,7 +112,7 @@ func (c *nodeStatusCollector) updatePowerSupplyStatus(ch chan<- prometheus.Metri
 			} else {
 				status = 1
 			}
-			ch <- prometheus.MustNewConstMetric(c.nodePowerSupply, prometheus.GaugeValue, status, nodeLNN, nodeID, supplyID, powerSupply.Status)
+			ch <- prometheus.MustNewConstMetric(c.nodePowerSupply, prometheus.GaugeValue, status, nodeLNN, nodeID, supplyID, powerSupply.Status, powerSupply.Good)
 		}
 	}
 	return nil
