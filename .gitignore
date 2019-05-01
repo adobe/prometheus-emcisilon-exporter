@@ -1,6 +1,3 @@
-prometheus-emcisilon-exporter.linux_amd64
-prometheus-emcisilon-exporter.osx
-prometheus-emcisilon-exporter
-prometheus-emcisilon-exporter-2.0.13
-prometheus-emcisilon-exporter-2.0.14
+prometheus-emcisilon-exporter*
 .vscode/settings.json
+.idea
