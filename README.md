@@ -79,6 +79,7 @@ Collectors can be enabled by using `--collector.<name>` or disabled with `--no-c
 | --collector.memory | memory | Enables the collection of memory statistics | enabled |
 | --collector.network | network | Enables the collection of network statistics | enabled |
 | --collector.nfs_exports | nfs_exports | Enables the collection of summary information about nfs exports | enabled |
+| --collector.node_capacity | node_capacity | Enables the collection of node capacity metrics (ifs bytes used per node) | enabled |
 | --collector.node_health | node_health | Enables the collection of node health information | enabled |
 | --collector.node_partition | node_partition | Enables the collection of node partition information (\, \var, \var\crash, etc.) | enabled |
 | --collector.node_protocol | node_protocol | Enables the collection of node level procotol statistics | enabled |
@@ -156,6 +157,15 @@ Collectors can be enabled by using `--collector.<name>` or disabled with `--no-c
  
 # HELP isilon_node_disk_xfers_out_rate_all Current disk egress transfer rate.
 # TYPE isilon_node_disk_xfers_out_rate_all gauge
+
+# HELP isilon_node_ifs_bytes_free Number of ifs bytes free on the node.
+# TYPE isilon_node_ifs_bytes_free gauge
+
+# HELP isilon_node_ifs_bytes_total Number of ifs bytes total on the node.
+# TYPE isilon_node_ifs_bytes_total gauge
+
+# HELP isilon_node_ifs_bytes_used Number of ifs bytes used on the node.
+# TYPE isilon_node_ifs_bytes_used gauge
  
 # HELP isilon_node_health Current health of a node from the view of the onefs cluster.
 # TYPE isilon_node_health gauge
