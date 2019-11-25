@@ -1,3 +1,7 @@
-prometheus-emcisilon-exporter*
+# editors
 .vscode/settings.json
 .idea
+
+# golang
+vendor
+prometheus-emcisilon-exporter*
