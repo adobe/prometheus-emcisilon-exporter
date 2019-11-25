@@ -50,7 +50,7 @@ func NewStatfsCollector() (Collector, error) {
 			[]string{"mount_point"}, ConstLabels,
 		),
 		statfsFileBlockTotal: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "statfs", "file_block_used"),
+			prometheus.BuildFQName(namespace, "statfs", "file_block_total"),
 			"The total number of data blocks in the filesystem.",
 			[]string{"mount_point"}, ConstLabels,
 		),

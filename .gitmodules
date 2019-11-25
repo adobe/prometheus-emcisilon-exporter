@@ -1,9 +1,0 @@
-[submodule "vendor/github.com/prometheus/client_golang"]
-	path = vendor/github.com/prometheus/client_golang
-	url = https://github.com/prometheus/client_golang.git
-[submodule "vendor/github.com/prometheus/common"]
-	path = vendor/github.com/prometheus/common
-	url = https://github.com/prometheus/common.git
-[submodule "vendor/github.com/hpanike/goisilon"]
-	path = vendor/github.com/hpanike/goisilon
-	url = https://github.com/hpanike/goisilon.git
