@@ -16,9 +16,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/prometheus/common/log"
 	"github.com/hpanike/goisilon"
 	"github.com/hpanike/goisilon/api"
+	"github.com/prometheus/common/log"
 )
 
 // NewIsilonClient creates and isilon client from goisilon.NewClientsWithArgs.

@@ -60,7 +60,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	registry := prometheus.NewRegistry()
 	err = registry.Register(nc)
 	if err != nil {
-		log.Errorln("Could not register collector: %s", err)
+		log.Errorf("Could not register collector: %s\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("Could not register collector: %s", err)))
 		return
