@@ -62,6 +62,7 @@ type IsiIdentity struct {
 type IsiMultiVal struct {
 	Stats []struct {
 		Devid     int                  `json:"devid"`
+		Node      int                  `json:"node"`
 		Error     interface{}          `json:"error"`
 		ErrorCode interface{}          `json:"error_code"`
 		Key       string               `json:"key"`
