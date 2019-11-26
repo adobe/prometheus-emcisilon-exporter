@@ -35,17 +35,17 @@ func NodeCapacityCollector() (Collector, error) {
 		nodeIfsBytesFree: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "ifs_bytes_free"),
 			"Number of ifs bytes free on the node.",
-			[]string{"node"}, ConstLabels,
+			[]string{"node", "node_id"}, ConstLabels,
 		),
 		nodeIfsBytesUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "ifs_bytes_used"),
 			"Number of ifs bytes used on the node.",
-			[]string{"node"}, ConstLabels,
+			[]string{"node", "node_id"}, ConstLabels,
 		),
 		nodeIfsBytesTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "ifs_bytes_total"),
 			"Number of ifs bytes total on the node.",
-			[]string{"node"}, ConstLabels,
+			[]string{"node", "node_id"}, ConstLabels,
 		),
 	}, nil
 }
