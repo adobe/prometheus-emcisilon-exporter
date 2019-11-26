@@ -90,6 +90,7 @@ func QueryStatsEngineMultiVal(c *goisilon.Client, key string) (IsiMultiVal, erro
 	params = api.NewOrderedValues([][]string{
 		{"keys", key},
 		{"devid", "all"},
+		{"show_nodes", "True"},
 	})
 
 	//Query API
