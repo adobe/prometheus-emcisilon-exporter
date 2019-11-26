@@ -117,6 +117,7 @@ func QueryStatsEngineSingleVal(c *goisilon.Client, key string) (IsiSingleVal, er
 	params = api.NewOrderedValues([][]string{
 		{"keys", key},
 		{"devid", "all"},
+		{"show_nodes", "True"},
 	})
 
 	//Query API
@@ -253,6 +254,7 @@ func GetProtoStat(c *goisilon.Client, key string) (IsiProtoStat, error) {
 	params = api.NewOrderedValues([][]string{
 		{"keys", key},
 		{"devid", "all"},
+		{"show_nodes", "True"},
 	})
 
 	//Query API

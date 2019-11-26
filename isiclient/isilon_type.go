@@ -62,10 +62,10 @@ type IsiIdentity struct {
 type IsiMultiVal struct {
 	Stats []struct {
 		Devid     int                  `json:"devid"`
-		Node      int                  `json:"node"`
 		Error     interface{}          `json:"error"`
 		ErrorCode interface{}          `json:"error_code"`
 		Key       string               `json:"key"`
+		Node      int                  `json:"node"`
 		Time      int                  `json:"time"`
 		ValueSet  []map[string]float64 `json:"value"`
 	} `json:"stats"`
@@ -78,6 +78,7 @@ type IsiSingleVal struct {
 		Error     interface{} `json:"error"`
 		ErrorCode interface{} `json:"error_code"`
 		Key       string      `json:"key"`
+		Node      int         `json:"node"`
 		Time      int         `json:"time"`
 		Value     float64     `json:"value"`
 	} `json:"stats"`
@@ -143,6 +144,7 @@ type IsiProtoStat struct {
 		Error     interface{} `json:"error"`
 		ErrorCode interface{} `json:"error_code"`
 		Key       string      `json:"key"`
+		Node      int         `json:"node"`
 		Time      int         `json:"time"`
 		Value     interface{} `json:"value"`
 	} `json:"stats"`
