@@ -35,17 +35,17 @@ func NodeCapacityCollector() (Collector, error) {
 		nodeIfsBytesFree: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "ifs_bytes_free"),
 			"Number of ifs bytes free on the node.",
-			[]string{"node", "node_id"}, ConstLabels,
+			[]string{"node"}, ConstLabels,
 		),
 		nodeIfsBytesUsed: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "ifs_bytes_used"),
 			"Number of ifs bytes used on the node.",
-			[]string{"node", "node_id"}, ConstLabels,
+			[]string{"node"}, ConstLabels,
 		),
 		nodeIfsBytesTotal: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, nodeCollectorSubsystem, "ifs_bytes_total"),
 			"Number of ifs bytes total on the node.",
-			[]string{"node", "node_id"}, ConstLabels,
+			[]string{"node"}, ConstLabels,
 		),
 	}, nil
 }
@@ -68,7 +68,7 @@ func (c *nodeCapacityCollector) Update(ch chan<- prometheus.Metric) error {
 		} else {
 			ch <- prometheus.MustNewConstMetric(statsEngineCallFailure, prometheus.GaugeValue, 0, statKey)
 			for _, stat := range resp.Stats {
-				node := fmt.Sprintf("%v", stat.Devid)
+				node := fmt.Sprintf("%v", stat.Node)
 				ch <- prometheus.MustNewConstMetric(promStat, prometheus.GaugeValue, stat.Value, node)
 			}
 		}
