@@ -36,9 +36,9 @@ var (
 
 // Registers the isilon_exporter as a prometheus collector
 func init() {
-	version.Version = "2.0.0"
+	version.Version = "2.0.18"
 	version.BuildDate = fmt.Sprintf("%v", time.Now())
-	version.BuildUser = "panike"
+	version.BuildUser = "dayton"
 	prometheus.MustRegister(version.NewCollector("prometheus_emcisilon_exporter"))
 
 }
